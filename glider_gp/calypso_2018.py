@@ -8,6 +8,7 @@ import xarray
 
 
 from sklearn.gaussian_process.kernels import ConstantKernel, RBF
+from sklearn.gaussian_process.kernels import WhiteKernel
 from sklearn.gaussian_process import GaussianProcessRegressor
 
 from pypeit.core import fitting
@@ -67,7 +68,8 @@ def prep_one_spray(spray=0, field='temperature',
 
     return rel_hours, lons_spray, lats_spray, temp_spray
 
-def fit_sprays(items, bounds=None, linear_fit=None):
+def fit_sprays(items, bounds=None, linear_fit=None,
+               include_noise=True):
     if bounds is None:
         bounds = [(200, 310), (0.01, 1), (0.01, 0.2)]
 
@@ -82,8 +84,8 @@ def fit_sprays(items, bounds=None, linear_fit=None):
         rel_hours, lons_spray, lats_spray)])
 
     if linear_fit is None:
-        y_train = temp_spray - mean_temp
         mean_temp = np.mean(temp_spray)
+        y_train = temp_spray - mean_temp
     else:
         y_fit = linear_fit.eval(lons_spray, x2=lats_spray)
         y_train = temp_spray - y_fit
@@ -91,9 +93,17 @@ def fit_sprays(items, bounds=None, linear_fit=None):
     # Kernel
     kRBF_3D = RBF(length_scale=[1,1,1], 
                   length_scale_bounds=bounds)
+
+    # Combine kernels
+    if include_noise:
+        print("Including noise")
+        total_kernel = kRBF_3D + WhiteKernel()
+    else:
+        total_kernel = kRBF_3D 
+
     # Regressor
     gp_3D = GaussianProcessRegressor(
-        kernel=kRBF_3D, 
+        kernel=total_kernel, 
         n_restarts_optimizer=20)
     print("Fitting..")
     gp_3D.fit(X_train, y_train)
@@ -132,7 +142,7 @@ def generate_grids(lons_spray, lats_spray, npts=100):
 
 
 def chk_surface(lons_spray, lats_spray, temp_spray,
-                gp_3D, t_test=100, linear_fit=None):
+                gp_3D, t_test=500, linear_fit=None):
 
     mean_temp = np.mean(temp_spray)
 
@@ -186,10 +196,12 @@ def fit_linear_surface(lons_spray, lats_spray, field_spray,
     return fit
     
 
-def fit_one_spray():
-    fit_sprays(None)
+def fit_one_spray(include_noise=True):
+    fit_sprays(None,
+        bounds = [(200, 310), (0.01, 1), (0.01, 1)],
+        include_noise=include_noise)
 
-def fit_two_sprays():
+def fit_two_sprays(use_linear=False):
     # Spray 0
     rel_hours0, lons_spray0, lats_spray0, temp_spray0 = prep_one_spray()
     # Spray 1
@@ -202,8 +214,11 @@ def fit_two_sprays():
     temp_spray = np.concatenate([temp_spray0, temp_spray1])
 
     # Fit linear surface
-    linear_fit = fit_linear_surface(lons_spray, lats_spray, temp_spray,
+    if use_linear:
+        linear_fit = fit_linear_surface(lons_spray, lats_spray, temp_spray,
                        chk=False)
+    else:
+        linear_fit = None                    
 
     #bounds = [(200, 310), (0.1, 1), (0.1, 0.2)]
     #fit_sprays([rel_hours, lons_spray, lats_spray, 
@@ -225,4 +240,4 @@ if __name__ == '__main__':
     #fit_one_spray()
 
     # Try for 2 sprays
-    fit_two_sprays()
+    fit_two_sprays(use_linear=False)
