@@ -1,10 +1,11 @@
 # imports
 import numpy as np
-import sklearn
 from sklearn.gaussian_process.kernels import ConstantKernel, RBF
 from sklearn.gaussian_process import GaussianProcessRegressor
 
 from matplotlib import pyplot as plt
+
+from glider_gp import plotting
 
 from IPython import embed
 
@@ -85,25 +86,15 @@ def run_gp():
     # Examine one slice
     tslice = 20
     # Model
-    plot_surface(xgrid, ygrid, model[tslice, :, :])
+    plotting.plot_surface(xgrid, ygrid, model[tslice, :, :])
     # Fit
-    plot_surface(xgrid, ygrid, model_pred[tslice, :, :])
+    plotting.plot_surface(xgrid, ygrid, model_pred[tslice, :, :])
     # Resid
-    plot_surface(xgrid, ygrid, model[tslice, ...]-
+    plotting.plot_surface(xgrid, ygrid, model[tslice, ...]-
                  model_pred[tslice,...]) 
 
     embed(header='54')
 
-def plot_surface(xgrid, ygrid, f):
-    plt.clf()
-
-    fig = plt.figure(figsize=(12,12))
-    ax = fig.add_subplot(111, projection='3d')            
-    surf = ax.plot_surface(xgrid, ygrid, f,
-                        rstride=1, cstride=1, 
-                        cmap='jet', linewidth=0, 
-                        antialiased=False)
-    plt.show()
 
     
 # Command line execution
