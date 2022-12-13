@@ -45,6 +45,8 @@ def prep_one_spray(spray=0, field='temperature',
     # Cut by region
     if spray == 0:
         lon_cut, lat_cut =  -1.,37.
+    elif spray == 1:
+        lon_cut, lat_cut =  -0.9, 37.
     cut_reg = (ds.lon[profile] < lon_cut) & (ds.lat[profile] < lat_cut)
     temp_spray = temp_spray[cut_reg]
 
@@ -63,10 +65,16 @@ def prep_one_spray(spray=0, field='temperature',
 
     return rel_hours, lons_spray, lats_spray, temp_spray
 
-def fit_spray():#rel_hours, lons_spray, lats_spray, temp_spray):
+def fit_sprays(items, bounds=None):#rel_hours, lons_spray, lats_spray, temp_spray):
+    if bounds is None:
+        bounds = [(200, 310), (0.01, 1), (0.01, 0.2)]
 
     # Prep for the GP
-    rel_hours, lons_spray, lats_spray, temp_spray = prep_one_spray()
+    if items is None:
+        print("Loading up spray 0")
+        rel_hours, lons_spray, lats_spray, temp_spray = prep_one_spray()
+    else:
+        rel_hours, lons_spray, lats_spray, temp_spray = items
 
     X_train = np.array([ [t, lon, lat] for t, lon, lat in zip(
         rel_hours, lons_spray, lats_spray)])
@@ -76,10 +84,7 @@ def fit_spray():#rel_hours, lons_spray, lats_spray, temp_spray):
 
     # Kernel
     kRBF_3D = RBF(length_scale=[1,1,1], 
-                  length_scale_bounds=[
-                      (200, 310), #(1, 300), 
-                      (0.01, 1),
-                      (0.01, 0.2)]) 
+                  length_scale_bounds=bounds)
     # Regressor
     gp_3D = GaussianProcessRegressor(
         kernel=kRBF_3D, 
@@ -113,7 +118,8 @@ def fit_spray():#rel_hours, lons_spray, lats_spray, temp_spray):
                                     
 
     embed(header='102 of calypso_2018.py')
-    close_t = np.abs(rel_hours - 100) < 20
+
+    return gp_3D
 
 def chk_surface(lons_spray, lats_spray, temp_spray,
                 gp_3D, t_test=100):
@@ -143,6 +149,37 @@ def chk_surface(lons_spray, lats_spray, temp_spray,
     plt.show()
 
 
+def fit_one_spray():
+    fit_sprays(None)
+
+def fit_two_sprays():
+    # Spray 0
+    rel_hours0, lons_spray0, lats_spray0, temp_spray0 = prep_one_spray()
+    # Spray 1
+    rel_hours1, lons_spray1, lats_spray1, temp_spray1 = prep_one_spray(spray=1)
+
+    # Concatenate
+    rel_hours = np.concatenate([rel_hours0, rel_hours1])
+    lons_spray = np.concatenate([lons_spray0, lons_spray1])
+    lats_spray = np.concatenate([lats_spray0, lats_spray1])
+    temp_spray = np.concatenate([temp_spray0, temp_spray1])
+
+    #bounds = [(200, 310), (0.1, 1), (0.1, 0.2)]
+    #fit_sprays([rel_hours, lons_spray, lats_spray, 
+    #            temp_spray], bounds=bounds)
+
+    bounds = [(200, 310), (0.01, 1), (0.01, 1)]
+    gp_3D = fit_sprays([rel_hours, lons_spray, lats_spray, 
+                temp_spray], bounds=bounds)
+    chk_surface(lons_spray, lats_spray, temp_spray, gp_3D, t_test=500)
+
+    embed(header='156 of calypso_2018.py')
+
 # Command line execution
 if __name__ == '__main__':
-    fit_spray()
+
+    # One spray
+    #fit_one_spray()
+
+    # Try for 2 sprays
+    fit_two_sprays()
