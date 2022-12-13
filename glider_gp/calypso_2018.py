@@ -10,6 +10,8 @@ import xarray
 from sklearn.gaussian_process.kernels import ConstantKernel, RBF
 from sklearn.gaussian_process import GaussianProcessRegressor
 
+from pypeit.core import fitting
+
 from matplotlib import pyplot as plt
 
 from glider_gp import plotting
@@ -65,7 +67,7 @@ def prep_one_spray(spray=0, field='temperature',
 
     return rel_hours, lons_spray, lats_spray, temp_spray
 
-def fit_sprays(items, bounds=None):#rel_hours, lons_spray, lats_spray, temp_spray):
+def fit_sprays(items, bounds=None, linear_fit=None):
     if bounds is None:
         bounds = [(200, 310), (0.01, 1), (0.01, 0.2)]
 
@@ -79,8 +81,12 @@ def fit_sprays(items, bounds=None):#rel_hours, lons_spray, lats_spray, temp_spra
     X_train = np.array([ [t, lon, lat] for t, lon, lat in zip(
         rel_hours, lons_spray, lats_spray)])
 
-    mean_temp = np.mean(temp_spray)
-    y_train = temp_spray - mean_temp
+    if linear_fit is None:
+        y_train = temp_spray - mean_temp
+        mean_temp = np.mean(temp_spray)
+    else:
+        y_fit = linear_fit.eval(lons_spray, x2=lats_spray)
+        y_train = temp_spray - y_fit
 
     # Kernel
     kRBF_3D = RBF(length_scale=[1,1,1], 
@@ -93,18 +99,11 @@ def fit_sprays(items, bounds=None):#rel_hours, lons_spray, lats_spray, temp_spra
     gp_3D.fit(X_train, y_train)
     print(f"kernel: {gp_3D.kernel_}")
 
-    t_test = 500
-    # Simple test
-    y_test, y_std = gp_3D.predict(X_train[0:1], 
-                                    return_std=True)
-#       [102.18888889,  -1.8489175 ,  36.55766   ],
-    # Works but not once I add the time
-
     # Surface
-    chk_surface(lons_spray, lats_spray, temp_spray, gp_3D)
-    #chk_surface(lons_spray, lats_spray, temp_spray, gp_3D,
-    #            t_test=500)
+    chk_surface(lons_spray, lats_spray, temp_spray, gp_3D,
+                linear_fit=linear_fit)
 
+    '''
     # Another view
     ts = np.linspace(0, rel_hours.max(), 100)
     X_test = np.array( [[t, -1.8489175 ,  36.55766]
@@ -115,19 +114,13 @@ def fit_sprays(items, bounds=None):#rel_hours, lons_spray, lats_spray, temp_spra
     ax = plt.gca()
     ax.plot(ts, y_test + mean_temp)
     plt.show()
-                                    
-
-    embed(header='102 of calypso_2018.py')
+    '''
 
     return gp_3D
 
-def chk_surface(lons_spray, lats_spray, temp_spray,
-                gp_3D, t_test=100):
-
-    mean_temp = np.mean(temp_spray)
+def generate_grids(lons_spray, lats_spray, npts=100):
 
     # Examine
-    npts = 100
     lats = np.linspace(np.min(lats_spray),
                            np.max(lats_spray), npts)
     lons = np.linspace(np.min(lons_spray),
@@ -135,19 +128,63 @@ def chk_surface(lons_spray, lats_spray, temp_spray,
     lon_grid = np.outer(lons, np.ones(lats.size))
     lat_grid = np.outer(np.ones(lons.size), lats)
 
+    return lon_grid, lat_grid
+
+
+def chk_surface(lons_spray, lats_spray, temp_spray,
+                gp_3D, t_test=100, linear_fit=None):
+
+    mean_temp = np.mean(temp_spray)
+
+    # Grid
+    lon_grid, lat_grid = generate_grids(lons_spray, lats_spray)
+
     X_grid = np.array([ [t_test, lon, lat] for lon, lat in zip(
         lon_grid.flatten(), lat_grid.flatten())])
     y_pred3D, y_std = gp_3D.predict(X_grid, 
                                     return_std=True)
-    T_test = y_pred3D.reshape(lon_grid.shape) + mean_temp
+    T_fit = y_pred3D.reshape(lon_grid.shape)
+
+    if linear_fit:
+        y_fit = linear_fit.eval(lon_grid.flatten(), 
+                                x2=lat_grid.flatten())
+        T_fit += y_fit.reshape(lon_grid.shape)
+    else:
+        T_fit += mean_temp
 
     # Plot
     ax = plotting.plot_surface(lon_grid, lat_grid, 
-                               T_test, show=False)
+                               T_fit, show=False)
     ax.scatter(lons_spray, lats_spray, temp_spray, 
                marker='o', color='k')
     plt.show()
 
+def fit_linear_surface(lons_spray, lats_spray, field_spray,
+                       chk=False):
+    order = [1,1]
+    fit = fitting.robust_fit(lons_spray, field_spray, order, 
+                       x2=lats_spray, function='polynomial2d',
+                       upper=2., lower=2.)
+    print(f"{lons_spray.size-np.sum(fit.gpm)} points were rejected")
+
+    if chk:
+        lon_grid, lat_grid = generate_grids(lons_spray, 
+                                            lats_spray)
+        # Evaluate
+        surf = fit.eval(lon_grid.flatten(), x2=lat_grid.flatten())
+        surf = surf.reshape(lon_grid.shape)
+        #surf = fit.eval(lon_grid, lat_grid)
+        # Plot
+        ax = plotting.plot_surface(lon_grid, lat_grid, 
+                                surf, show=False)
+        ax.scatter(lons_spray, lats_spray, field_spray, 
+                marker='o', color='k')
+        plt.show()
+
+        embed(header='157 of calypso_2018.py')                    
+
+    return fit
+    
 
 def fit_one_spray():
     fit_sprays(None)
@@ -164,14 +201,20 @@ def fit_two_sprays():
     lats_spray = np.concatenate([lats_spray0, lats_spray1])
     temp_spray = np.concatenate([temp_spray0, temp_spray1])
 
+    # Fit linear surface
+    linear_fit = fit_linear_surface(lons_spray, lats_spray, temp_spray,
+                       chk=False)
+
     #bounds = [(200, 310), (0.1, 1), (0.1, 0.2)]
     #fit_sprays([rel_hours, lons_spray, lats_spray, 
     #            temp_spray], bounds=bounds)
 
     bounds = [(200, 310), (0.01, 1), (0.01, 1)]
     gp_3D = fit_sprays([rel_hours, lons_spray, lats_spray, 
-                temp_spray], bounds=bounds)
-    chk_surface(lons_spray, lats_spray, temp_spray, gp_3D, t_test=500)
+                temp_spray], bounds=bounds,
+                       linear_fit=linear_fit)
+    chk_surface(lons_spray, lats_spray, temp_spray, gp_3D, 
+                t_test=500, linear_fit=linear_fit)
 
     embed(header='156 of calypso_2018.py')
 
