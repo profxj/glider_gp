@@ -5,8 +5,7 @@ import matplotlib.gridspec as gridspec
 from glider_gp import plotting
 
 
-if __name__ == '__main__':
-
+def figs_2018():
     # 2018
 
     # max L
@@ -46,3 +45,15 @@ if __name__ == '__main__':
     plt.savefig(outfile, dpi=300)
     #plt.show()
     print('Wrote {:s}'.format(outfile))
+
+def figs_2019():
+    #plotting.plot_grid_maxL('output/calypso_2019_d50T.npz')
+    plotting.plot_grid_maxL('output/calypso_2019_d200T.npz')
+
+if __name__ == '__main__':
+
+    # 2018
+    #figs_2018()
+
+    # 2019
+    figs_2019()
