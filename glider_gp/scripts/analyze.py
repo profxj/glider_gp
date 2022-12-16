@@ -96,16 +96,6 @@ def main(args):
         os.path.basename(
             args.inp_file).replace('.json', '.npz'))
     np.savez(outfile, **output)
+    print(f"Wrote: {outfile}")
 
-    '''
-    # Plot
-    plt.clf()
-    ax = plt.gca()
-    img = ax.imshow(maxL[pair].T, origin='lower',
-                    extent=[iv[0], iv[-1], jv[0], jv[-1]],
-                    aspect='auto', vmin=-10, vmax=0)
-    plt.colorbar(img) 
-    plt.show()
-    '''
-
-    embed(header='44 of analyze.py')
+    #embed(header='44 of analyze.py')
