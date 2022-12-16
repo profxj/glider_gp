@@ -72,21 +72,19 @@ def main(args):
     if pargs['fit']:
         print("Fitting..")
         gp_3D.fit(X_train, y_train)
-        output['theta'] = gp_3D.kernel_.theta
+        output['best_theta'] = gp_3D.kernel_.theta
     else:
         raise IOError("Need to have the best fit values already")
 
     # maxL
     if pargs['maxL'] == 'all':
-        pairs = ['t_x', 't_y', 't_sig', 'x_y', 'x_sig',
-                 'y_sig']
+        pairs = ['t_x', 't_y', 't_sig', 'x_y', 'x_sig', 'y_sig']
     elif pargs['maxL'] == 'none':
         pairs = []
     else:
         pairs = pargs['maxL']
 
     for pair in pairs:
-        print(f"Working on {pair}")
         L, iv, jv = gp.explore_L(pair, gp_3D)
         output[pair] = L
         output[f'{pair}_iv'] = iv

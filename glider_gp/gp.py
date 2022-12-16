@@ -5,7 +5,7 @@ from sklearn.gaussian_process.kernels import WhiteKernel
 from sklearn.gaussian_process import GaussianProcessRegressor
 
 
-def define_kernel(pargs):
+def define_kernel(pargs:dict):
     # Kernel
     kRBF_3D = RBF(length_scale=[1,1,1], 
                   length_scale_bounds=pargs['RBF_bounds'])
@@ -13,7 +13,8 @@ def define_kernel(pargs):
 
     return total_kernel
 
-def explore_L(pair:str, gp_3D, ngrid=30):
+def explore_L(pair:str, gp_3D:GaussianProcessRegressor, 
+              ngrid:int=30):
 
     best_theta = gp_3D.kernel_.theta
     if len(best_theta) != 4:

@@ -4,7 +4,7 @@
     "depths": [50],
     "field": "temperature",
     "preproc": [],
-    "RBF_bounds": [[100, 310], [0.01, 1], [0.01, 1]],
+    "RBF_bounds": [[50, 310], [0.01, 1], [0.01, 1]],
     "fit": true,
     "outdir": "output",
     "maxL": "all"
