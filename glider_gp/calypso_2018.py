@@ -169,6 +169,43 @@ def chk_surface(lons_spray, lats_spray, temp_spray,
                marker='o', color='k')
     plt.show()
 
+def explore_L(gp_3D, ngrid=30):
+
+    best_theta = gp_3D.kernel_.theta
+
+    log_noise_val = np.linspace(-5, 5, ngrid)
+    log_y_vals = np.linspace(-3, 0, ngrid)
+    maxL = []
+    print("Generating maxL grid")
+    for log_noise in log_noise_val:
+        for log_y in log_y_vals:
+            # Set the noise
+            theta = best_theta.copy()
+            theta[3] = log_noise
+            theta[2] = log_y
+            #
+            L = gp_3D.log_marginal_likelihood(theta)
+            maxL.append(L)
+
+    maxL = np.reshape(maxL, (ngrid,ngrid))
+
+    maxL -= np.max(maxL)
+
+    plt.clf()
+    ax = plt.gca()
+    img = ax.imshow(maxL, origin='lower',
+                    extent=[-3, 0, -5, 5],
+                    aspect='auto', vmin=-10, vmax=0)
+    plt.colorbar(img) 
+    plt.show()
+
+    #plt.clf()
+    #ax = plt.gca()
+    #ax.plot(log_noise_val, maxL)
+    #plt.show()
+    embed(header='204 of calypso_2018.py')
+
+
 def fit_linear_surface(lons_spray, lats_spray, field_spray,
                        chk=False):
     order = [1,1]
@@ -197,9 +234,23 @@ def fit_linear_surface(lons_spray, lats_spray, field_spray,
     
 
 def fit_one_spray(include_noise=True):
-    fit_sprays(None,
-        bounds = [(200, 310), (0.01, 1), (0.01, 1)],
+    gp_3D = fit_sprays(None,
+        bounds = [(5, 310), (0.01, 1), (0.01, 1)],
         include_noise=include_noise)
+
+    # Generate a curve of maximum likelihood values
+    best_theta = gp_3D.kernel_.theta
+
+    explore_L(gp_3D, ngrid=30)
+
+    '''
+    plt.clf()
+    ax = plt.gca()
+    ax.plot(log_noise_val, maxL)
+    plt.show()
+    '''
+
+    # Generate a grid of maximum likelihood values
 
 def fit_two_sprays(use_linear=False):
     # Spray 0
@@ -224,14 +275,16 @@ def fit_two_sprays(use_linear=False):
     #fit_sprays([rel_hours, lons_spray, lats_spray, 
     #            temp_spray], bounds=bounds)
 
-    bounds = [(200, 310), (0.01, 1), (0.01, 1)]
+    bounds = [(100, 310), (0.01, 1), (0.01, 1)]
     gp_3D = fit_sprays([rel_hours, lons_spray, lats_spray, 
                 temp_spray], bounds=bounds,
                        linear_fit=linear_fit)
-    chk_surface(lons_spray, lats_spray, temp_spray, gp_3D, 
-                t_test=500, linear_fit=linear_fit)
+    #chk_surface(lons_spray, lats_spray, temp_spray, gp_3D, 
+    #            t_test=500, linear_fit=linear_fit)
 
-    embed(header='156 of calypso_2018.py')
+    # MaxL
+    explore_L(gp_3D, ngrid=30)
+
 
 # Command line execution
 if __name__ == '__main__':
