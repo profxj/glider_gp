@@ -1,4 +1,4 @@
-""" Analysis on 2018 Calypso data """
+""" Analysis on Calypso data """
 
 import numpy as np
 import os
@@ -19,19 +19,36 @@ from glider_gp import plotting
 
 from IPython import embed
 
-'''
-def load_data():
-    """ Load data from .mat file """
-    import scipy.io as sio
-    data = sio.loadmat('calypso_2018.mat')
-    return data
-'''
 
 def load_data():
     cfile = os.path.join(resource_filename(
         'glider_gp', 'data'), 'Calypso.nc')
     ds = xarray.open_dataset(cfile)
     return ds
+
+def load_for_gp(pargs):
+    ds = load_data()
+    # Loop on sprays
+    time, lons, lats, fields = [], [], [], []
+    for spray in pargs['sprays']:
+        for depth in pargs['depths']:
+            rel_hours, lons_spray, lats_spray, field_spray = prep_one_spray(
+                spray=spray, field=pargs['field'], depth=depth)
+            # Save
+            time.append(rel_hours)
+            lons.append(lons_spray)
+            lats.append(lats_spray)
+            fields.append(field_spray)
+
+    # Concatenate
+    data = {}
+    data['time'] = np.concatenate(time)
+    data['lons'] = np.concatenate(lons)
+    data['lats'] = np.concatenate(lats)
+    data['field'] = np.concatenate(fields)
+
+    return data
+   
 
 def prep_one_spray(spray=0, field='temperature',
                       depth=50):
@@ -46,9 +63,9 @@ def prep_one_spray(spray=0, field='temperature',
     temp_spray = ds[field].data[depth_idx, profile]
 
     # Cut by region
-    if spray == 0:
+    if spray == 0: # 2018
         lon_cut, lat_cut =  -1.,37.
-    elif spray == 1:
+    elif spray == 1: # 2018
         lon_cut, lat_cut =  -0.9, 37.
     cut_reg = (ds.lon[profile] < lon_cut) & (ds.lat[profile] < lat_cut)
     temp_spray = temp_spray[cut_reg]
@@ -58,10 +75,6 @@ def prep_one_spray(spray=0, field='temperature',
     time = ds.time[profile].data[cut_reg]
     rel_time = time - time[0]
     rel_hours = rel_time.astype(float) / (1e9*3600.)
-
-    # Prep for the GP
-    #lon0 = np.min(ds.lon.data[profile][cut_reg])
-    #lat0 = np.min(ds.lat.data[profile][cut_reg])
 
     lons_spray = ds.lon.data[profile][cut_reg]
     lats_spray = ds.lat.data[profile][cut_reg]
