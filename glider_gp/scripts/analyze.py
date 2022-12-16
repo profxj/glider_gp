@@ -31,8 +31,13 @@ def main(pargs):
     import numpy as np
     import os
 
+    from matplotlib import pyplot as plt
+
+    from sklearn.gaussian_process import GaussianProcessRegressor
+
     from glider_gp import utils as glider_utils
     from glider_gp import calypso
+    from glider_gp import gp
 
     # Load input file
     pargs = glider_utils.loadjson(pargs.inp_file)
@@ -41,6 +46,50 @@ def main(pargs):
     if pargs['dataset'] == 'calypso':
         data = calypso.load_for_gp(pargs)
 
-    embed(header='44 of analyze.py')
-
     # Prep for GP
+    X_train = np.array([ [t, lon, lat] for t, lon, lat in zip(
+        data['time'], data['lons'], data['lats'])])
+
+    if 'linear_fit' in pargs['preproc']:
+        raise IOError("linear_fit not implemented yet")
+        #y_fit = linear_fit.eval(lons_spray, x2=lats_spray)
+        y_train = data['field'] - y_fit
+    else:
+        mean_temp = np.mean(data['field'])
+        y_train = data['field'] - mean_temp
+
+    # Kernel
+    total_kernel = gp.define_kernel(pargs)
+
+    # Regressor
+    gp_3D = GaussianProcessRegressor(
+        kernel=total_kernel, 
+        n_restarts_optimizer=20)
+
+    output = {}
+
+    # Fit?
+    if pargs['fit']:
+        print("Fitting..")
+        gp_3D.fit(X_train, y_train)
+        output['theta'] = gp_3D.kernel_.theta
+    else:
+        raise IOError("Need to have the best fit values already")
+
+    # maxL
+    maxL = {}
+    for pair in pargs['maxL']:
+        maxL[pair], iv, jv = gp.explore_L(pair, gp_3D)
+
+    # Figure
+
+        # Plot
+        plt.clf()
+        ax = plt.gca()
+        img = ax.imshow(maxL[pair].T, origin='lower',
+                        extent=[iv[0], iv[-1], jv[0], jv[-1]],
+                        aspect='auto', vmin=-10, vmax=0)
+        plt.colorbar(img) 
+        plt.show()
+
+    embed(header='44 of analyze.py')

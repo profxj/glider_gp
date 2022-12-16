@@ -1,9 +1,0 @@
-{
-    "dataset": "calypso",
-    "sprays": [0,1],
-    "depths": [200],
-    "outdir": "output",
-    "fit": true,
-    "field": "temperature",
-    "maxL": ["y,sig"]
-}

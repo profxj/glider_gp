@@ -122,6 +122,8 @@ def fit_sprays(items, bounds=None, linear_fit=None,
     gp_3D.fit(X_train, y_train)
     print(f"kernel: {gp_3D.kernel_}")
 
+    embed(header='125 of calypso.py')
+
     # Surface
     chk_surface(lons_spray, lats_spray, temp_spray, gp_3D,
                 linear_fit=linear_fit)
