@@ -1,0 +1,11 @@
+{
+    "dataset": "calypso",
+    "sprays": [0,1],
+    "depths": [200],
+    "field": "temperature",
+    "preproc": [],
+    "RBF_bounds": [[50, 310], [0.01, 1], [0.01, 1]],
+    "fit": true,
+    "outdir": "output",
+    "maxL": "all"
+}

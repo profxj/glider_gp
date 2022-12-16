@@ -67,17 +67,31 @@ def prep_one_spray(spray=0, field='temperature',
         lon_cut, lat_cut =  -1.,37.
     elif spray == 1: # 2018
         lon_cut, lat_cut =  -0.9, 37.
-    cut_reg = (ds.lon[profile] < lon_cut) & (ds.lat[profile] < lat_cut)
-    temp_spray = temp_spray[cut_reg]
+    elif spray in [2,3,4,5,6,7]: # 2019
+        flags = []
+        for idx in np.where(profile)[0]:
+            gd = np.isfinite(ds[field].data[:, idx])
+            imax = np.where(gd)[0][-1]
+            #import pdb; pdb.set_trace()
+            if imax > (400/10):
+                flags.append(True)
+            else:
+                flags.append(False)
+        cuts = np.array(flags)
 
+    if spray in [0,1]:
+        cuts = (ds.lon[profile] < lon_cut) & (ds.lat[profile] < lat_cut)
+
+    # Finish
+    temp_spray = temp_spray[cuts]
 
     # Deal with time
-    time = ds.time[profile].data[cut_reg]
+    time = ds.time[profile].data[cuts]
     rel_time = time - time[0]
     rel_hours = rel_time.astype(float) / (1e9*3600.)
 
-    lons_spray = ds.lon.data[profile][cut_reg]
-    lats_spray = ds.lat.data[profile][cut_reg]
+    lons_spray = ds.lon.data[profile][cuts]
+    lats_spray = ds.lat.data[profile][cuts]
 
     return rel_hours, lons_spray, lats_spray, temp_spray
 
