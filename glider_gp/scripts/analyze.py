@@ -25,7 +25,7 @@ def parser(options=None):
     return pargs
 
 
-def main(pargs):
+def main(args):
     """ Run
     """
     import numpy as np
@@ -40,7 +40,7 @@ def main(pargs):
     from glider_gp import gp
 
     # Load input file
-    pargs = glider_utils.loadjson(pargs.inp_file)
+    pargs = glider_utils.loadjson(args.inp_file)
 
     # Load the data
     if pargs['dataset'] == 'calypso':
@@ -77,19 +77,37 @@ def main(pargs):
         raise IOError("Need to have the best fit values already")
 
     # maxL
-    maxL = {}
-    for pair in pargs['maxL']:
-        maxL[pair], iv, jv = gp.explore_L(pair, gp_3D)
+    if pargs['maxL'] == 'all':
+        pairs = ['t_x', 't_y', 't_sig', 'x_y', 'x_sig',
+                 'y_sig']
+    elif pargs['maxL'] == 'none':
+        pairs = []
+    else:
+        pairs = pargs['maxL']
 
-    # Figure
+    for pair in pairs:
+        print(f"Working on {pair}")
+        L, iv, jv = gp.explore_L(pair, gp_3D)
+        output[pair] = L
+        output[f'{pair}_iv'] = iv
+        output[f'{pair}_jv'] = jv
 
-        # Plot
-        plt.clf()
-        ax = plt.gca()
-        img = ax.imshow(maxL[pair].T, origin='lower',
-                        extent=[iv[0], iv[-1], jv[0], jv[-1]],
-                        aspect='auto', vmin=-10, vmax=0)
-        plt.colorbar(img) 
-        plt.show()
+    # Output
+    outfile = os.path.join(
+        pargs['outdir'], 
+        os.path.basename(
+            args.inp_file).replace('.json', '.npz'))
+    np.savez(outfile, **output)
+
+    '''
+    # Plot
+    plt.clf()
+    ax = plt.gca()
+    img = ax.imshow(maxL[pair].T, origin='lower',
+                    extent=[iv[0], iv[-1], jv[0], jv[-1]],
+                    aspect='auto', vmin=-10, vmax=0)
+    plt.colorbar(img) 
+    plt.show()
+    '''
 
     embed(header='44 of analyze.py')

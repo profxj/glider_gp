@@ -20,8 +20,8 @@ def explore_L(pair:str, gp_3D, ngrid=30):
         raise IOError("Expecting an RBF and White kernel")
 
     # Indices
-    idx_dict = dict(time=0, x=1, y=2, sig=3)
-    i_idx, j_idx = [idx_dict[item] for item in pair.split(',')]
+    idx_dict = dict(t=0, x=1, y=2, sig=3)
+    i_idx, j_idx = [idx_dict[item] for item in pair.split('_')]
 
     i_bounds = gp_3D.kernel_.bounds[i_idx]
     j_bounds = gp_3D.kernel_.bounds[j_idx]
